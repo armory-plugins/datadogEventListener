@@ -1,0 +1,61 @@
+buildscript {
+  ext.kotlin_version = '1.3.50'
+
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+  }
+}
+apply plugin: "io.spinnaker.plugin.service-extension"
+apply plugin: "maven-publish"
+apply plugin: 'kotlin'
+apply plugin: 'kotlin-kapt'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+  jcenter()
+  maven { url "http://dl.bintray.com/spinnaker/spinnaker/" }
+}
+
+spinnakerPlugin {
+  serviceName = "echo"
+  pluginClass = "io.armory.plugin.events.listener.datadog.DataDogEventListenerPlugin"
+}
+
+dependencies {
+  compileOnly(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
+  compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+  compileOnly (group: 'com.netflix.spinnaker.kork', name: 'kork-plugins-api', version: "${korkVersion}")
+  compileOnly (group: 'com.netflix.spinnaker.echo', name: 'echo-api', version: "${echoVersion}")
+  compileOnly group: 'org.slf4j', name: 'slf4j-api', version: '1.7.28'
+  compileOnly group: 'com.fasterxml.jackson.module', name: 'jackson-module-kotlin', version: '2.9.8'
+  compileOnly group: 'com.squareup.okhttp3', name: 'okhttp', version: '3.14.6'
+
+  kapt(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
+
+  testImplementation (group: 'com.netflix.spinnaker.echo', name: 'echo-api', version: "${echoVersion}")  {
+    exclude group: "org.slf4j"
+  }
+  testImplementation group: 'com.fasterxml.jackson.module', name: 'jackson-module-kotlin', version: '2.10.3'
+  testImplementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '3.14.7'
+  testImplementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.28'
+
+  testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.2"
+  testImplementation group: 'io.strikt', name: 'strikt-core', version: '0.22.1'
+  testImplementation group: 'dev.minutest', name: 'minutest', version: '1.10.0'
+  testImplementation group: 'io.mockk', name: 'mockk', version: '1.9.3'
+
+  testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.0"
+  testRuntime "org.junit.platform:junit-platform-launcher:1.4.0"
+  testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
+}
+
+tasks.withType(Test) {
+  useJUnitPlatform()
+}
