@@ -18,16 +18,16 @@ package io.armory.plugin.events.listener.datadog
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.netflix.spinnaker.echo.api.events.Event
 import com.netflix.spinnaker.echo.api.events.Metadata
+import com.netflix.spinnaker.kork.plugins.api.PluginSdks
+import com.netflix.spinnaker.kork.plugins.api.httpclient.HttpClient
 import dev.minutest.junit.JUnit5Minutests
 import dev.minutest.rootContext
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import okhttp3.*
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
-import okhttp3.RequestBody
 import org.slf4j.Logger
 import strikt.assertions.startsWith
 
@@ -35,23 +35,20 @@ class DataDogEventListenerTest : JUnit5Minutests {
 
     private val mapper = jacksonObjectMapper()
 
-    class HttpMockableDataDogEventListener(
-            val okHttpClient: OkHttpClient,
-            val log: Logger) : DataDogEventListener(DataDogEventListenerConfig("asdf")) {
+    val pluginSdks = mockk<PluginSdks>()
 
-        override fun getHttpClient() : OkHttpClient {
-            return okHttpClient
+    class HttpMockableDataDogEventListener(
+            val http: HttpClient,
+            val log: Logger,
+            pluginSdks: PluginSdks) : DataDogEventListener(DataDogEventListenerConfig("asdf"), pluginSdks) {
+
+        override fun getHttpClient() : HttpClient {
+            return http
         }
 
         override fun getLogger() : Logger {
             return log
         }
-    }
-
-    private fun bodyToString(request: RequestBody): String {
-        val buffer = okio.Buffer()
-        request.writeTo(buffer)
-        return buffer.readUtf8()
     }
 
     fun tests() = rootContext {
@@ -80,24 +77,22 @@ class DataDogEventListenerTest : JUnit5Minutests {
                             "pipelineConfigId" to "f514b57a-63af-4f5f-ac0a-2bc12d6c363b"
                     )
             )
-            val okHttpClient = mockk<OkHttpClient> {
-                every { newCall(any()) } returns mockk {
-                    every { execute() } returns mockk {
-                        every { isSuccessful } returns true
-                    }
+            val httpClient = mockk<HttpClient> {
+                every { post(any()) } returns mockk {
+                    every { isError } returns false
                 }
             }
             val log = mockk<Logger>()
 
-            val eventListener = HttpMockableDataDogEventListener(okHttpClient, log)
+            val eventListener = HttpMockableDataDogEventListener(httpClient, log, pluginSdks)
             eventListener.processEvent(event)
 
             verify(exactly = 1) {
-                okHttpClient.newCall(
+                httpClient.post(
                         withArg {
-                            expectThat(it.method()).isEqualTo("POST")
-                            expectThat(it.url().toString()).isEqualTo("https://api.datadoghq.com/api/v1/events?api_key=asdf")
-                            val dataDogEvent = mapper.readValue(bodyToString(it.body()!!), DataDogEvent::class.java)
+                            expectThat(it.path).isEqualTo("api/v1/events")
+                            expectThat(it.queryParams).isEqualTo(mapOf("api_key" to "asdf"))
+                            val dataDogEvent = it.body as DataDogEvent
                             expectThat(dataDogEvent.tags).isEqualTo(setOf(
                                     "source:orca",
                                     "eventType:orca:task:complete",
@@ -163,24 +158,22 @@ class DataDogEventListenerTest : JUnit5Minutests {
                             "status" to "SUCCEEDED"
                     )
             )
-            val okHttpClient = mockk<OkHttpClient> {
-                every { newCall(any()) } returns mockk {
-                    every { execute() } returns mockk {
-                        every { isSuccessful } returns true
-                    }
+            val httpClient = mockk<HttpClient> {
+                every { post(any()) } returns mockk {
+                    every { isError } returns false
                 }
             }
             val log = mockk<Logger>()
 
-            val eventListener = HttpMockableDataDogEventListener(okHttpClient, log)
+            val eventListener = HttpMockableDataDogEventListener(httpClient, log, pluginSdks)
             eventListener.processEvent(event)
 
             verify(exactly = 1) {
-                okHttpClient.newCall(
+                httpClient.post(
                         withArg {
-                            expectThat(it.method()).isEqualTo("POST")
-                            expectThat(it.url().toString()).isEqualTo("https://api.datadoghq.com/api/v1/events?api_key=asdf")
-                            val dataDogEvent = mapper.readValue(bodyToString(it.body()!!), DataDogEvent::class.java)
+                            expectThat(it.path).isEqualTo("api/v1/events")
+                            expectThat(it.queryParams).isEqualTo(mapOf("api_key" to "asdf"))
+                            val dataDogEvent = it.body as DataDogEvent
                             expectThat(dataDogEvent.tags).isEqualTo(setOf(
                                     "source:orca",
                                     "eventType:orca:orchestration:complete",
@@ -236,26 +229,25 @@ class DataDogEventListenerTest : JUnit5Minutests {
             event.content = mapOf(
                     "execution" to mapOf("type" to "ORCHESTRATION")
             )
-            val okHttpClient = mockk<OkHttpClient>() {
-                every { newCall(any()) } returns mockk {
-                    every { execute() } returns mockk {
-                        every { isSuccessful } returns false
-                    }
+            val httpClient = mockk<HttpClient> {
+                every { post(any()) } returns mockk {
+                    every { isError } returns true
+                    every { statusCode } returns 400
                 }
             }
             val log = mockk<Logger>(relaxed = true)
 
-            val eventListener = HttpMockableDataDogEventListener(okHttpClient, log)
+            val eventListener = HttpMockableDataDogEventListener(httpClient, log, pluginSdks)
             eventListener.processEvent(event)
 
             verify(exactly = 1) {
-                okHttpClient.newCall(any())
+                httpClient.post(any())
             }
 
             verify(exactly = 1) {
                 log.error(
                         withArg {
-                            expectThat(it).startsWith("DataDog event listener failed with response: ")
+                            expectThat(it).startsWith("DataDog event listener failed with response: 400")
                         }
                 )
             }

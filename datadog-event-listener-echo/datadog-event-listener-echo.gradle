@@ -35,7 +35,6 @@ dependencies {
   compileOnly (group: 'com.netflix.spinnaker.echo', name: 'echo-api', version: "${echoVersion}")
   compileOnly group: 'org.slf4j', name: 'slf4j-api', version: '1.7.28'
   compileOnly group: 'com.fasterxml.jackson.module', name: 'jackson-module-kotlin', version: '2.9.8'
-  compileOnly group: 'com.squareup.okhttp3', name: 'okhttp', version: '3.14.6'
 
   kapt(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
 
@@ -43,7 +42,6 @@ dependencies {
     exclude group: "org.slf4j"
   }
   testImplementation group: 'com.fasterxml.jackson.module', name: 'jackson-module-kotlin', version: '2.10.3'
-  testImplementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '3.14.7'
   testImplementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.28'
 
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.2"
