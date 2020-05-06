@@ -15,19 +15,16 @@
  */
 package io.armory.plugin.events.listener.datadog
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.netflix.spinnaker.echo.api.events.Event
 import com.netflix.spinnaker.echo.api.events.EventListener
-import org.slf4j.LoggerFactory
 import org.pf4j.Extension
 import org.pf4j.Plugin
 import org.pf4j.PluginWrapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.netflix.spinnaker.kork.plugins.api.PluginSdks
-import com.netflix.spinnaker.kork.plugins.api.httpclient.HttpClient
-import com.netflix.spinnaker.kork.plugins.api.httpclient.HttpClientConfig
-import com.netflix.spinnaker.kork.plugins.api.httpclient.Request
-
 import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import retrofit2.Retrofit
+import retrofit2.converter.jackson.JacksonConverterFactory
 
 class DataDogEventListenerPlugin(wrapper: PluginWrapper) : Plugin(wrapper) {
     private val logger = LoggerFactory.getLogger(DataDogEventListenerPlugin::class.java)
@@ -50,18 +47,25 @@ data class DataDogEvent(
 )
 
 @Extension
-open class DataDogEventListener(val configuration: DataDogEventListenerConfig, val pluginSdks: PluginSdks) : EventListener {
+open class DataDogEventListener(val configuration: DataDogEventListenerConfig) : EventListener {
 
-    private val httpClientName = "datadog"
     private val dataDogUrl = "https://api.datadoghq.com/"
 
     private val log = LoggerFactory.getLogger(DataDogEventListener::class.java)
 
     private val mapper = jacksonObjectMapper()
 
-    protected open fun getHttpClient() : HttpClient {
-        pluginSdks.http().configure(httpClientName, dataDogUrl, HttpClientConfig())
-        return pluginSdks.http().get(httpClientName)
+    private var datadogClient: DatadogClient? = null
+
+    protected open fun getDataDogClient() : DatadogClient {
+        if (datadogClient == null) {
+            val retrofit = Retrofit.Builder()
+                    .baseUrl(dataDogUrl)
+                    .addConverterFactory(JacksonConverterFactory.create())
+                    .build()
+            datadogClient = retrofit.create(DatadogClient::class.java)
+        }
+        return datadogClient!!
     }
 
     protected open fun getLogger() : Logger {
@@ -97,13 +101,9 @@ open class DataDogEventListener(val configuration: DataDogEventListenerConfig, v
                 "info"
         )
 
-        val request = Request("send_events_to_datadog", "api/v1/events")
-                .setQueryParams(mapOf("api_key" to configuration.apiKey))
-                .setBody(dataDogEvent)
-        val response = getHttpClient().post(request)
-
-        if (response.isError) {
-            getLogger().error("DataDog event listener failed with response: ${response.statusCode}")
+        val response = getDataDogClient().sendEvent(configuration.apiKey, dataDogEvent).execute()
+        if (!response.isSuccessful) {
+            getLogger().error("DataDog event listener failed with response: ${response.code()} - ${response.message()}")
         }
     }
 }

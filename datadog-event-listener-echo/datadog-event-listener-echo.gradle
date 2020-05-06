@@ -38,6 +38,11 @@ dependencies {
 
   kapt(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
 
+  compileOnly 'com.squareup.retrofit2:retrofit:2.8.1'
+  compileOnly 'com.squareup.retrofit2:converter-jackson:2.8.1'
+
+  testImplementation 'com.squareup.retrofit2:retrofit:2.8.1'
+  testImplementation 'com.squareup.retrofit2:converter-jackson:2.8.1'
   testImplementation (group: 'com.netflix.spinnaker.echo', name: 'echo-api', version: "${echoVersion}")  {
     exclude group: "org.slf4j"
   }
