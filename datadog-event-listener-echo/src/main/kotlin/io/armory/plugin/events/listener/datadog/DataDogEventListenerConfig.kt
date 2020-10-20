@@ -15,7 +15,7 @@
  */
 package io.armory.plugin.events.listener.datadog
 
-import com.netflix.spinnaker.kork.plugins.api.ExtensionConfiguration
+import com.netflix.spinnaker.kork.plugins.api.PluginConfiguration
 
-@ExtensionConfiguration("armory.dataDogEventListener")
+@PluginConfiguration
 data class DataDogEventListenerConfig(var apiKey: String)

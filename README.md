@@ -15,11 +15,8 @@ spinnaker:
     plugins:
       Armory.DatadogEventListener:
         enabled: true
-        extensions:
-          armory.dataDogEventListener:
-            enabled: true
-            config:
-              apiKey: 'key'
+        config:
+          apiKey: 'key'
 ```
 
 Or use the [pluginRepository](https://github.com/armory-plugins/pluginRepository) to avoid copying the plugin `.zip` artifact.
